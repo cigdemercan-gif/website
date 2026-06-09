@@ -1,0 +1,71 @@
+# Olyntis sitesini telefondan acmak icin:
+# 1) Bu scripti calistir (QR olusturur + yerel sunucu baslatir)
+# 2) Telefon ile bilgisayarin AYNI Wi-Fi aginda ol
+# 3) qr-mobil.png dosyasini ac veya scriptin yazdigi URL'yi tarayiciya yaz
+#
+# Kapatmak icin bu pencerede Ctrl+C
+
+$ErrorActionPreference = "Stop"
+$port = 8080
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location $root
+
+$ip = (
+  Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object {
+    $_.IPAddress -match '^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)' -and
+    $_.IPAddress -notmatch '^127\.'
+  } |
+  Select-Object -First 1
+).IPAddress
+
+if (-not $ip) {
+  $ip = (
+    Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object { $_.IPAddress -notmatch '^127\.' } |
+    Select-Object -First 1
+  ).IPAddress
+}
+
+if (-not $ip) {
+  Write-Host "Yerel IPv4 adresi bulunamadi. Ethernet/Wi-Fi baglantini kontrol et."
+  exit 1
+}
+
+$siteUrl = "http://${ip}:${port}/"
+Write-Host ""
+Write-Host "Telefona yazilacak adres: $siteUrl" -ForegroundColor Green
+Write-Host ""
+
+try {
+  $enc = [System.Uri]::EscapeDataString($siteUrl)
+  $qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=$enc"
+  $qrPath = Join-Path $root "qr-mobil.png"
+  Invoke-WebRequest -Uri $qrApi -OutFile $qrPath -UseBasicParsing
+  Write-Host "QR kod kaydedildi: $qrPath" -ForegroundColor Cyan
+  Write-Host "Dosyayi acip telefon kamerasiyla okutabilirsin." -ForegroundColor Cyan
+}
+catch {
+  Write-Host "QR indirilemedi (internet veya guvenlik duvari). Manuel QR icin:" -ForegroundColor Yellow
+  Write-Host "  https://www.qr-code-generator.com/  adresinde su URL'yi kullan: $siteUrl"
+}
+
+Write-Host ""
+Write-Host "Sunucu basliyor. Durdurmak icin Ctrl+C." -ForegroundColor Yellow
+Write-Host ""
+
+$python = Get-Command python -ErrorAction SilentlyContinue
+if ($python) {
+  python -m http.server $port
+}
+else {
+  $py = Get-Command py -ErrorAction SilentlyContinue
+  if ($py) {
+    py -m http.server $port
+  }
+  else {
+    Write-Host "Python bulunamadi. Node.js varsa su klasorde:" -ForegroundColor Red
+    Write-Host "  npx --yes serve -l $port" -ForegroundColor White
+    exit 1
+  }
+}
