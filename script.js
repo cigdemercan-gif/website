@@ -203,9 +203,6 @@ function setActiveTab(catKey) {
     deckEl.setAttribute("aria-labelledby", tab.id);
   }
   deckHeading.textContent = `${CATEGORY_LABELS[catKey] || catKey} kartları`;
-  if (prev !== catKey) {
-    clearSelectionPanel();
-  }
   renderDeck(catKey);
 }
 
@@ -236,6 +233,26 @@ function syncThemeColorMeta() {
     "content",
     document.body.classList.contains("light") ? "#f8fafc" : "#0f172a"
   );
+}
+
+function showSelectedCard(card) {
+  const catLabel = labelForCard(card);
+  selectedEmpty.classList.add("hidden");
+  selectedContent.classList.remove("hidden");
+
+  openCard.innerHTML = `
+    <p class="card-cat">${escapeHtml(catLabel)}</p>
+    <h4>${escapeHtml(card.title)}</h4>
+    <p><strong>Arka yüz teması:</strong> ${escapeHtml(card.patron)}</p>
+    <p>${escapeHtml(card.task)}</p>
+    <p class="pts">Kart değeri: ${card.points}</p>
+  `;
+
+  openInfo.innerHTML = `
+    <p><strong>Mitoloji notu:</strong> ${escapeHtml(card.lore)}</p>
+    <p><strong>Uygulama:</strong> Görev tamamlanırsa ${card.points} adım; tamamlanamazsa yerinde kal.</p>
+    <p><strong>Tekrar:</strong> Aynı kategoriden farklı kart için zar/kategori uyumu.</p>
+  `;
 }
 
 themeBtn.addEventListener("click", () => {
