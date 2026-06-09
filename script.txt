@@ -1,0 +1,282 @@
+const themeBtn = document.getElementById("themeBtn");
+const deckEl = document.getElementById("deck");
+const deckHeading = document.getElementById("deck-heading");
+const selectedPanel = document.getElementById("selectedPanel");
+const selectedEmpty = selectedPanel.querySelector(".selected-empty");
+const selectedContent = document.getElementById("selectedContent");
+const openCard = document.getElementById("openCard");
+const openInfo = document.getElementById("openInfo");
+const categoryTiles = document.querySelectorAll(".category-tile");
+
+const CATEGORY_LABELS = {
+  bilgi: "Bilgi",
+  hareket: "Hareket",
+  yaraticilik: "Yaratıcılık",
+  sans: "Şans / Engel"
+};
+
+/** Arka yüz teması: Bilgi = Athena + sütun, Hareket = Hermes + kanat, Yaratıcılık = Apollo + lir, Şans = Zeus + şimşek */
+const PATRON_BY_CAT = {
+  bilgi: "Athena",
+  hareket: "Hermes",
+  yaraticilik: "Apollo",
+  sans: "Zeus"
+};
+
+/** id kullanılmıyor; aynı sayfada çok kart olsa da çakışma yok */
+const BACK_ART_SVG = {
+  bilgi: `<svg class="svg-motif svg-motif--column" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 110" aria-hidden="true">
+  <ellipse cx="40" cy="16" rx="24" ry="9" fill="#f1f5f9" opacity=".95"/>
+  <rect x="26" y="22" width="28" height="72" rx="2" fill="#cbd5e1"/>
+  <line x1="32" y1="30" x2="32" y2="88" stroke="#64748b" stroke-width="1.2" opacity=".5"/>
+  <line x1="40" y1="30" x2="40" y2="88" stroke="#64748b" stroke-width="1.2" opacity=".35"/>
+  <line x1="48" y1="30" x2="48" y2="88" stroke="#64748b" stroke-width="1.2" opacity=".5"/>
+  <rect x="18" y="94" width="44" height="10" rx="2" fill="#64748b"/>
+  <rect x="22" y="104" width="36" height="6" rx="1" fill="#475569"/>
+</svg>`,
+  hareket: `<svg class="svg-motif svg-motif--wings" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 70" aria-hidden="true">
+  <path d="M50 38 Q12 8 5 42 Q22 48 50 38" fill="#e2e8f0" stroke="#94a3b8" stroke-width="0.5"/>
+  <path d="M50 38 Q88 8 95 42 Q78 48 50 38" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"/>
+  <ellipse cx="50" cy="40" rx="6" ry="10" fill="#f1f5f9" opacity=".95"/>
+</svg>`,
+  yaraticilik: `<svg class="svg-motif svg-motif--lyre" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 100" aria-hidden="true">
+  <path d="M32 18 L32 78 Q45 88 58 78 L58 18 Q45 12 32 18 Z" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="37" y1="28" x2="53" y2="28" stroke="#fcd34d" stroke-width="1.2"/>
+  <line x1="37" y1="38" x2="53" y2="38" stroke="#fcd34d" stroke-width="1.2"/>
+  <line x1="37" y1="48" x2="53" y2="48" stroke="#fcd34d" stroke-width="1.2"/>
+  <line x1="37" y1="58" x2="53" y2="58" stroke="#fcd34d" stroke-width="1.2"/>
+  <path d="M45 78 L45 92" stroke="#fbbf24" stroke-width="2"/>
+</svg>`,
+  sans: `<svg class="svg-motif svg-motif--bolt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 100" aria-hidden="true">
+  <path d="M38 4 L18 46 L34 46 L22 96 L54 38 L36 38 L48 4 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1" stroke-linejoin="round"/>
+</svg>`
+};
+
+function card(catKey, title, task, points, lore) {
+  return { catKey, patron: PATRON_BY_CAT[catKey], title, task, points, lore };
+}
+
+const ALL_CARDS = [
+  ...[
+    ["Akropol Bilgisi", "Parthenon'un kime adandığını ve şehrini söyle.", 2, "Athena, bilgelik ve savaş sanatında şehir koruyucusuydu."],
+    ["Kutsal Hayvan", "Athena'nın sembol hayvanı nedir? Tek cümleyle açıkla.", 1, "Baykuş bilgeliği ve gece görüşünü çağrıştırır."],
+    ["Mitoloji Zinciri", "30 saniyede: Zeus → Poseidon → Hades bağlantısını kur.", 2, "Üç erkek mitolojide Olimpos ve yeraltı düzenini paylaşır."],
+    ["Olümpiyat Kökeni", "Modern Olimpiyat ismi hangi dağtan gelir?", 1, "Olimpos, tanrıların konutu olarak mitolojide merkezdedir."],
+    ["Aegis", "Aegis neyi temsil eder? Kısa tanımla.", 2, "Athena’nın kalkanı bazen Medusa motifiyle anılır."],
+    ["Weaving Sınavı", "Arakne mitini 20 saniyede özetle.", 3, "Athena ustalık ve ölçüyü, ölçüsüzlüğü cezalandırır."],
+    ["Zeytin Dalı", "Atina ile ilişkili bitki ve anlamını söyle.", 1, "Zeytin barış ve medeniyet simgesidir."],
+    ["Savaş ve Akıl", "Athena'nın Ares’ten farkını iki kelimeyle vurgula.", 2, "Athena disiplinli strateji, Ares çoğu zaman çatışmanın ham gücüdür."],
+    ["Şehir Kurucusu", "Mitlerde Athena hangi kenti korur?", 1, "Efsaneye göre Atina onun armağanlarıyla seçilmiştir."],
+    ["İkonografi", "Athena figürlerinde sık görülen bir obje söyle (miğfer, mızrak vb.).", 1, "Sanatta tanrıların sembolleri hızlıca ayırt edilir."]
+  ].map((x) => card("bilgi", ...x)),
+  ...[
+    ["Kanat Çırpma", "10 saniye yerinde hızlı ayak değiştir (düşme yok).", 1, "Hermes haber ve hızın tanrısıdır; kanatlı sandaletleriyle anılır."],
+    ["İris Sızısı", "Tek bacak üzerinde 12 saniye dur.", 2, "Hermes yolu kısaltan, Iris ise gökkuşağı köprüsüyle mesaj taşır."],
+    ["Hızlı Teslimat", "Oda içinde 5 saniye 'S' şeklinde koş (güvenli alan).", 2, "Hermes yol gösterir ve engelleri aşmayı sembolize eder."],
+    ["Caduceus Hareketi", "Kollarını sarmal şekilde iki yöne aç-kapa, 15 saniye.", 1, "Asa (caduceus) Hermes’in bildirgesidir."],
+    ["Postacı Gitti", "Sandalyeden kalkmadan 20 saniye diz üstü-denge.", 2, "Denge ve çeviklik, yolculukta kontrol gerektirir."],
+    ["Kadük Adımlar", "Yerinde 8 mini zıplama, yumuşak iniş.", 1, "Hız kazanırken yere yumuşak inmek Hermes’in zarafetidir."],
+    ["Mesajı Getir", "10 saniye içinde 10 kelime söyle: nefeste hızlı, net telaffuz.", 2, "Konuşma temposu iletişimin ritmini temsil eder."],
+    ["Kıvrak Dönüş", "Olduğun yerde 3 tam tur dön, sonra duraksamadan selam ver.", 1, "Yön değiştirmek yol kavramının parçasıdır."],
+    ["Yol Ayrımı", "İleri 3 adım, geri 2 adım, yine ileri 3 — ritimle yap.", 3, "Yolculuk ileri-geri kararlarıyla doludur."],
+    ["Kanat Gölgesi", "Kollarını yana aç; 15 saniye küçük çapraz salınım (kanat gölgesi).", 1, "Kanat imgeleri Hermes’i en çok ayırt eden öğelerdendir."]
+  ].map((x) => card("hareket", ...x)),
+  ...[
+    ["Lir İmgesi", "Bir mit sahnesini tek cümlelik film sloganı gibi yaz.", 2, "Apollo sanat, müzik ve ölçülü güzelliğin tanrısıdır."],
+    ["Kehanet Sesi", "Rastgele bir kahraman seç; ona 2 mısralık kısa destan yaz.", 3, "Apollo kehanet ve uyumla bağlantılıdır."],
+    ["Güneş Tınısı", "Bir efsaneyi 'şiir' gibi anlat — kafiye zorunlu değil.", 2, "Güneş ve ışık Apolloncu şiirin klasik temasıdır."],
+    ["Maskeli Anlatı", "Tragedya ve komedya farkını 15 saniyede canlandır (tek kişi).", 2, "Tiyatro Dionysos ile de bağlansa Apolloncu düzen sıkça yanyana gelir."],
+    ["Heykel Betimle", "Hayali bir Apollon heykelini 3 sıfatla tarif et.", 1, "Klasik sanatta Apollon genç ve dengeli bedenle betimlenir."],
+    ["Nemalar", "Doğa seslerinden oluşan mini bir 'ezgi' uydur (seslendir).", 1, "Müzik doğa ve ritimle başlar."],
+    ["Renk Paleti", "Olimpos'u üç renkle betimle ve hangi tanrıya yakıştığını söyle.", 2, "Renk seçimi tematik anlatımı güçlendirir."],
+    ["Ritim Oyunu", "Alfabeyi ritimli söyle: her 3. harfte hafif vurgu.", 2, "Ritim müzikal düşünmenin temelidir."],
+    ["Kısa Öykü", "20 kelimede bir mitolojik nesne etrafında mini öykü.", 3, "Kısalık yaratıcı seçimi zorlar."],
+    ["Canlı Logo", "Olyntis için 5 saniyelik slogan uydur; enerji ver.", 1, "Marka sesi yaratıcılığın günlük halidir."]
+  ].map((x) => card("yaraticilik", ...x)),
+  ...[
+    ["Gök Gürlemesi", "1–6 arası say: 4+ ise görev başarı say, değilse bir kez tekrar dene.", 2, "Zeus göğün egemeni ve adaletin koruyucusudur."],
+    ["Şimşek Atışı", "Taş-kağıt-makas (hayali); kazanırsan +1 puan varsay.", 1, "Kader anları bazen tek hamleye indirgenir."],
+    ["Bulut Seçimi", "Parmağınla 'X' çiz; çizgi düz mü—tekrar çiz.", 2, "Gök işaretleri Zeus mitinde belirleyicidir."],
+    ["Olimpos Oyu", "Gruba sor: 'Evet/Hayır' — çoğunluk görevi onaylar.", 2, "Tanrısal karar bazen topluluk oyu gibidir."],
+    ["Dualı Zar", "1–3 bir, 4–6 iki adım düşün; sonra zar at (yoksa sanal).", 3, "Şans ve risk Olyntis yolunda yan yana durur."],
+    ["Adalet Terazisi", "Bir eşyayı seç; ağır taraf hangi risk—kısa yorumla.", 1, "Zeus adaletle de anılır."],
+    ["Simsek Sayacı", "10'dan geriye say; '0'da tokalaş varmış gibi el çırp.", 1, "Beklenen an şimşek gibidir."],
+    ["Gök Gözü", "Gözlerini kapat 5 sn; açınca ilk gördüğün nesne kader ipucu.", 2, "Şans anlarında dikkat yönlendirir."],
+    ["Fırtına Öncesi", "Derin nefes 3 kez; son nefeste görevi kabul et ya da pas de.", 2, "Zorlu kararlar fırtına öncesi sessizlik gibi olur."],
+    ["Oltalama", "Bir cümlede 'gök' ve 'yol' geçir; gülen olursa şans sende.", 2, "Zeus gökyüzü ve yolculuğun belirsizliğiyle bağlanır."]
+  ].map((x) => card("sans", ...x))
+];
+
+let activeCategory = "bilgi";
+
+function labelForCard(card) {
+  return CATEGORY_LABELS[card.catKey] || card.catKey;
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function closeSiblings(except) {
+  deckEl.querySelectorAll(".flip-card.opened").forEach((el) => {
+    if (el !== except) {
+      el.classList.remove("opened");
+      el.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
+function backFaceHtml(catKey) {
+  const patron = PATRON_BY_CAT[catKey];
+  const art = BACK_ART_SVG[catKey] || "";
+  return `
+      <span class="flip-face flip-back flip-back--${catKey}">
+        <span class="card-back-art">${art}</span>
+        <span class="hero-name">${escapeHtml(patron)}</span>
+        <span class="back-mark">OLYNTIS</span>
+      </span>`;
+}
+
+function createCardElement(card, index) {
+  const catLabel = labelForCard(card);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "flip-card";
+  btn.dataset.index = String(index);
+  btn.setAttribute("aria-expanded", "false");
+  btn.setAttribute(
+    "aria-label",
+    `${card.patron} (${catLabel}) kartı. Tıkla ve çevir. Görev: ${card.title}.`
+  );
+
+  btn.innerHTML = `
+    <span class="flip-inner">
+      ${backFaceHtml(card.catKey)}
+      <span class="flip-face flip-front">
+        <span class="card-cat">${escapeHtml(catLabel)}</span>
+        <span class="flip-front-title">${escapeHtml(card.title)}</span>
+        <span class="flip-task">${escapeHtml(card.task)}</span>
+        <span class="pts">Puan: ${card.points}</span>
+      </span>
+    </span>
+  `;
+
+  btn.addEventListener("click", () => {
+    const willOpen = !btn.classList.contains("opened");
+    if (willOpen) {
+      closeSiblings(btn);
+    }
+    btn.classList.toggle("opened");
+    const isFront = btn.classList.contains("opened");
+    btn.setAttribute("aria-expanded", isFront ? "true" : "false");
+    if (isFront) {
+      showSelectedCard(card);
+    }
+  });
+
+  btn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      btn.click();
+    }
+  });
+
+  return btn;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function showSelectedCard(card) {
+  const catLabel = labelForCard(card);
+  selectedEmpty.classList.add("hidden");
+  selectedContent.classList.remove("hidden");
+
+  openCard.innerHTML = `
+    <p class="card-cat">${escapeHtml(catLabel)}</p>
+    <h4>${escapeHtml(card.title)}</h4>
+    <p><strong>Arka yüz teması:</strong> ${escapeHtml(card.patron)}</p>
+    <p>${escapeHtml(card.task)}</p>
+    <p class="pts">Kart değeri: ${card.points}</p>
+  `;
+
+  openInfo.innerHTML = `
+    <p><strong>Mitoloji notu:</strong> ${escapeHtml(card.lore)}</p>
+    <p><strong>Uygulama:</strong> Görev tamamlanırsa ${card.points} adım; tamamlanamazsa yerinde kal.</p>
+    <p><strong>Tekrar:</strong> Aynı kategoriden farklı kart için zar/kategori uyumu.</p>
+  `;
+}
+
+function clearSelectionPanel() {
+  selectedEmpty.classList.remove("hidden");
+  selectedContent.classList.add("hidden");
+  openCard.innerHTML = "";
+  openInfo.innerHTML = "";
+}
+
+function setActiveTab(catKey) {
+  const prev = activeCategory;
+  activeCategory = catKey;
+  categoryTiles.forEach((tile) => {
+    const is = tile.dataset.cat === catKey;
+    tile.classList.toggle("is-active", is);
+    tile.setAttribute("aria-selected", is ? "true" : "false");
+  });
+  const tab = document.getElementById(`tab-${catKey}`);
+  if (tab) {
+    deckEl.setAttribute("aria-labelledby", tab.id);
+  }
+  deckHeading.textContent = `${CATEGORY_LABELS[catKey] || catKey} kartları`;
+  if (prev !== catKey) {
+    clearSelectionPanel();
+  }
+  renderDeck(catKey);
+}
+
+function renderDeck(catKey) {
+  deckEl.innerHTML = "";
+  const list = shuffle(ALL_CARDS.filter((c) => c.catKey === catKey));
+  list.forEach((card, i) => {
+    deckEl.appendChild(createCardElement(card, i));
+  });
+}
+
+categoryTiles.forEach((tile) => {
+  tile.addEventListener("click", () => {
+    const cat = tile.dataset.cat;
+    if (!cat || cat === activeCategory) {
+      return;
+    }
+    setActiveTab(cat);
+  });
+});
+
+function syncThemeColorMeta() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    return;
+  }
+  meta.setAttribute(
+    "content",
+    document.body.classList.contains("light") ? "#f8fafc" : "#0f172a"
+  );
+}
+
+themeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("light");
+  syncThemeColorMeta();
+});
+
+syncThemeColorMeta();
+
+setActiveTab(activeCategory);
