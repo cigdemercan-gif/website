@@ -1,9 +1,6 @@
 const themeBtn = document.getElementById("themeBtn");
 const deckEl = document.getElementById("deck");
 const deckHeading = document.getElementById("deck-heading");
-const selectedPanel = document.getElementById("selectedPanel");
-const selectedEmpty = selectedPanel.querySelector(".selected-empty");
-const selectedContent = document.getElementById("selectedContent");
 const openCard = document.getElementById("openCard");
 const openInfo = document.getElementById("openInfo");
 const categoryTiles = document.querySelectorAll(".category-tile");
@@ -191,33 +188,6 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function showSelectedCard(card) {
-  const catLabel = labelForCard(card);
-  selectedEmpty.classList.add("hidden");
-  selectedContent.classList.remove("hidden");
-
-  openCard.innerHTML = `
-    <p class="card-cat">${escapeHtml(catLabel)}</p>
-    <h4>${escapeHtml(card.title)}</h4>
-    <p><strong>Arka yüz teması:</strong> ${escapeHtml(card.patron)}</p>
-    <p>${escapeHtml(card.task)}</p>
-    <p class="pts">Kart değeri: ${card.points}</p>
-  `;
-
-  openInfo.innerHTML = `
-    <p><strong>Mitoloji notu:</strong> ${escapeHtml(card.lore)}</p>
-    <p><strong>Uygulama:</strong> Görev tamamlanırsa ${card.points} adım; tamamlanamazsa yerinde kal.</p>
-    <p><strong>Tekrar:</strong> Aynı kategoriden farklı kart için zar/kategori uyumu.</p>
-  `;
-}
-
-function clearSelectionPanel() {
-  selectedEmpty.classList.remove("hidden");
-  selectedContent.classList.add("hidden");
-  openCard.innerHTML = "";
-  openInfo.innerHTML = "";
 }
 
 function setActiveTab(catKey) {
